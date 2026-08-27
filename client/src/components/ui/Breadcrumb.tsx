@@ -14,7 +14,7 @@ export function Breadcrumb({ stands, blocks }: BreadcrumbProps) {
   const goToStand = useAppStore((s) => s.goToStand);
   const goToBlock = useAppStore((s) => s.goToBlock);
 
-  if (viewLevel === "overview") return null;
+  if (viewLevel === "overview" || viewLevel === "seat-preview") return null;
 
   const stand = stands.find((s) => s.id === selectedStandId);
   const block = blocks.find((b) => b.id === selectedBlockId);

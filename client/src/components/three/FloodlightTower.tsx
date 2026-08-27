@@ -4,9 +4,11 @@ import * as THREE from "three";
 interface FloodlightTowerProps {
   position: [number, number, number];
   height?: number;
+  daylight?: number; // 0 (night, lights on) -> 1 (full day, lights off)
 }
 
-export function FloodlightTower({ position, height = 42 }: FloodlightTowerProps) {
+export function FloodlightTower({ position, height = 42, daylight = 1 }: FloodlightTowerProps) {
+  const lampOn = THREE.MathUtils.clamp(1 - daylight * 1.3, 0, 1);
   const lampPositions = useMemo(() => {
     const rows = 6;
     const cols = 5;
@@ -36,12 +38,22 @@ export function FloodlightTower({ position, height = 42 }: FloodlightTowerProps)
         {lampPositions.map(([x, z], i) => (
           <mesh key={i} position={[x, 0.25, z]}>
             <cylinderGeometry args={[0.18, 0.18, 0.15, 8]} />
-            <meshStandardMaterial color="#fff8e0" emissive="#fff2c0" emissiveIntensity={1.2} />
+            <meshStandardMaterial
+              color="#fff8e0"
+              emissive="#fff2c0"
+              emissiveIntensity={0.15 + lampOn * 1.5}
+            />
           </mesh>
         ))}
       </group>
 
-      <pointLight position={[0, height + 1, 0]} intensity={40} distance={140} decay={2} color="#fff8e8" />
+      <pointLight
+        position={[0, height + 1, 0]}
+        intensity={lampOn * 45}
+        distance={140}
+        decay={2}
+        color="#fff8e8"
+      />
     </group>
   );
 }

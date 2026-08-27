@@ -6,13 +6,16 @@ import { CartPanel } from "./components/ui/CartPanel";
 import { CheckoutModal } from "./pages/CheckoutModal";
 import { ConfirmationModal } from "./pages/ConfirmationModal";
 import { MyBookingsModal } from "./pages/MyBookingsModal";
-import { fetchStands, fetchBlocks } from "./lib/api";
+import { SeatPreviewOverlay } from "./components/ui/SeatPreviewOverlay";
+import { EnvironmentControls } from "./components/ui/EnvironmentControls";
+import { fetchStands, fetchBlocks, fetchSeats } from "./lib/api";
 import { useAppStore } from "./store/useAppStore";
-import type { Stand, Block } from "./types";
+import type { Stand, Block, Seat } from "./types";
 
 export default function App() {
   const [stands, setStands] = useState<Stand[] | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [seats, setSeats] = useState<Seat[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const [showCheckout, setShowCheckout] = useState(false);
@@ -21,6 +24,8 @@ export default function App() {
 
   const viewLevel = useAppStore((s) => s.viewLevel);
   const selectedStandId = useAppStore((s) => s.selectedStandId);
+  const selectedBlockId = useAppStore((s) => s.selectedBlockId);
+  const previewSeatId = useAppStore((s) => s.previewSeatId);
 
   useEffect(() => {
     fetchStands()
@@ -35,11 +40,22 @@ export default function App() {
       .catch(() => setBlocks([]));
   }, [selectedStandId]);
 
+  useEffect(() => {
+    if (!selectedBlockId) {
+      setSeats([]);
+      return;
+    }
+    fetchSeats(selectedBlockId)
+      .then(setSeats)
+      .catch(() => setSeats([]));
+  }, [selectedBlockId]);
+
   const selectedStand = stands?.find((s) => s.id === selectedStandId);
+  const previewSeat = seats.find((s) => s.id === previewSeatId) ?? null;
 
   return (
     <div className="relative h-screen w-screen bg-[#0a0e14]">
-      {stands && <Scene stands={stands} blocks={blocks} />}
+      {stands && <Scene stands={stands} blocks={blocks} previewSeat={previewSeat} />}
 
       {!stands && !error && (
         <div className="absolute inset-0 flex items-center justify-center text-gray-300">
@@ -88,6 +104,16 @@ export default function App() {
             {selectedStand.priceRange[1].toLocaleString("en-IN")} · {selectedStand.seatsAvailable.toLocaleString("en-IN")} seats available
           </div>
         </div>
+      )}
+
+      {viewLevel === "overview" && <EnvironmentControls />}
+
+      {viewLevel === "seat-preview" && previewSeat && selectedStand && (
+        <SeatPreviewOverlay
+          seat={previewSeat}
+          stand={selectedStand}
+          block={blocks.find((b) => b.id === selectedBlockId)!}
+        />
       )}
 
       <CartPanel onCheckout={() => setShowCheckout(true)} />

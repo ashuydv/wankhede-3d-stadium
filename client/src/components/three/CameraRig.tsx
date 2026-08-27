@@ -2,12 +2,14 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useAppStore } from "../../store/useAppStore";
-import type { Stand, Block } from "../../types";
+import type { Stand, Block, Seat } from "../../types";
 import { cameraHeightToY } from "../../lib/geometry";
+import { getSeatWorldPosition } from "../../lib/seatPosition";
 
 interface CameraRigProps {
   stands: Stand[];
   blocks: Block[];
+  previewSeat: Seat | null;
   orbitControlsRef: React.RefObject<any>;
 }
 
@@ -33,6 +35,20 @@ function standVantage(stand: Stand): { pos: THREE.Vector3; target: THREE.Vector3
   return { pos, target };
 }
 
+const EYE_HEIGHT = 1.15; // seated eye height above the seat surface
+
+function seatVantage(
+  stand: Stand,
+  block: Block,
+  seat: Seat
+): { pos: THREE.Vector3; target: THREE.Vector3 } {
+  const seatPos = getSeatWorldPosition(stand, block, seat.row, seat.seatNumber);
+  const pos = seatPos.clone().setY(seatPos.y + EYE_HEIGHT);
+  // look toward the pitch center, slightly above ground so the view isn't tilted into the turf
+  const target = new THREE.Vector3(0, 1.5, 0);
+  return { pos, target };
+}
+
 function blockVantage(_stand: Stand, block: Block): { pos: THREE.Vector3; target: THREE.Vector3 } {
   const angleRad = THREE.MathUtils.degToRad(block.angleOffsetDeg + block.arcSpanDeg / 2);
   const gridCenterRadius = _stand.radius - 4;
@@ -48,7 +64,7 @@ function blockVantage(_stand: Stand, block: Block): { pos: THREE.Vector3; target
   return { pos, target };
 }
 
-export function CameraRig({ stands, blocks, orbitControlsRef }: CameraRigProps) {
+export function CameraRig({ stands, blocks, previewSeat, orbitControlsRef }: CameraRigProps) {
   const { camera } = useThree();
   const viewLevel = useAppStore((s) => s.viewLevel);
   const selectedStandId = useAppStore((s) => s.selectedStandId);
@@ -62,20 +78,19 @@ export function CameraRig({ stands, blocks, orbitControlsRef }: CameraRigProps) 
     let pos = OVERVIEW_POS;
     let target = OVERVIEW_TARGET;
 
-    if (viewLevel === "stand" || viewLevel === "block" || viewLevel === "seats") {
-      const stand = stands.find((s) => s.id === selectedStandId);
+    const stand = stands.find((s) => s.id === selectedStandId);
+    const block = blocks.find((b) => b.id === selectedBlockId);
+
+    if (viewLevel === "seat-preview" && stand && block && previewSeat) {
+      const v = seatVantage(stand, block, previewSeat);
+      pos = v.pos;
+      target = v.target;
+    } else if (viewLevel === "stand" || viewLevel === "block" || viewLevel === "seats") {
       if (stand) {
-        if ((viewLevel === "block" || viewLevel === "seats") && selectedBlockId) {
-          const block = blocks.find((b) => b.id === selectedBlockId);
-          if (block) {
-            const v = blockVantage(stand, block);
-            pos = v.pos;
-            target = v.target;
-          } else {
-            const v = standVantage(stand);
-            pos = v.pos;
-            target = v.target;
-          }
+        if ((viewLevel === "block" || viewLevel === "seats") && block) {
+          const v = blockVantage(stand, block);
+          pos = v.pos;
+          target = v.target;
         } else {
           const v = standVantage(stand);
           pos = v.pos;
@@ -87,7 +102,7 @@ export function CameraRig({ stands, blocks, orbitControlsRef }: CameraRigProps) 
     targetPos.current.copy(pos);
     targetLookAt.current.copy(target);
     animating.current = true;
-  }, [viewLevel, selectedStandId, selectedBlockId, stands, blocks]);
+  }, [viewLevel, selectedStandId, selectedBlockId, stands, blocks, previewSeat]);
 
   useFrame(() => {
     if (!animating.current) return;

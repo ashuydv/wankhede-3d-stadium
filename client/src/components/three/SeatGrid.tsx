@@ -5,6 +5,7 @@ import { Html } from "@react-three/drei";
 import { fetchSeats } from "../../lib/api";
 import { useAppStore } from "../../store/useAppStore";
 import type { Block, Stand, Seat } from "../../types";
+import { SEAT_GAP, ROW_GAP } from "../../lib/seatPosition";
 
 interface SeatGridProps {
   stand: Stand;
@@ -12,8 +13,6 @@ interface SeatGridProps {
 }
 
 const SEAT_SIZE = 0.9;
-const SEAT_GAP = 1.3;
-const ROW_GAP = 1.5;
 
 const STATUS_COLOR: Record<string, string> = {
   available: "#22c55e",
@@ -32,6 +31,7 @@ export function SeatGrid({ stand, block }: SeatGridProps) {
   const cart = useAppStore((s) => s.cart);
   const addToCart = useAppStore((s) => s.addToCart);
   const removeFromCart = useAppStore((s) => s.removeFromCart);
+  const goToSeatPreview = useAppStore((s) => s.goToSeatPreview);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,11 +151,22 @@ export function SeatGrid({ stand, block }: SeatGridProps) {
           distanceFactor={20}
           occlude
         >
-          <div className="pointer-events-none select-none whitespace-nowrap rounded-md bg-black/85 px-2.5 py-1 text-center text-white shadow-xl">
-            <div className="text-xs font-semibold">
+          <div className="select-none whitespace-nowrap rounded-md bg-black/85 px-2.5 py-1.5 text-center text-white shadow-xl">
+            <div className="pointer-events-none text-xs font-semibold">
               Row {hoveredSeat.row} · Seat {hoveredSeat.seatNumber}
             </div>
-            <div className="text-xs text-emerald-400">₹{hoveredSeat.price.toLocaleString("en-IN")}</div>
+            <div className="pointer-events-none text-xs text-emerald-400">
+              ₹{hoveredSeat.price.toLocaleString("en-IN")}
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goToSeatPreview(hoveredSeat.id);
+              }}
+              className="pointer-events-auto mt-1 w-full rounded bg-white/10 px-2 py-0.5 text-[10px] font-medium text-sky-300 hover:bg-white/20"
+            >
+              👁 View from seat
+            </button>
           </div>
         </Html>
       )}
